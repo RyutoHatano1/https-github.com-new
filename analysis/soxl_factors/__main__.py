@@ -11,6 +11,7 @@ def main():
     ap.add_argument("--out", type=Path, default=Path("output"))
     ap.add_argument("--cache", type=Path, default=Path("data_cache"))
     ap.add_argument("--start", default="1995-01-01")
+    ap.add_argument("--end", default=None, help="この日付の前日までを取得（当日の未確定足を除く）")
     ap.add_argument("--refresh", action="store_true", help="キャッシュを無視して再取得")
     ap.add_argument("--no-fred", action="store_true")
     ap.add_argument("--extended", action="store_true", help="SOXL 上場前を ^SOX から合成した 3 倍系列で延長")
@@ -20,7 +21,7 @@ def main():
     ap.add_argument("--freq", default="W", choices=["D", "W", "M"])
     a = ap.parse_args()
 
-    px, ohlcv = load(a.cache, a.start, refresh=a.refresh, use_fred=not a.no_fred)
+    px, ohlcv = load(a.cache, a.start, end=a.end, refresh=a.refresh, use_fred=not a.no_fred)
     out = a.out / ("extended" if a.extended else "actual")
     run_pipeline(px, ohlcv, out, extended=a.extended, holdout_frac=a.holdout_frac,
                  exec_lag=a.exec_lag, cost_bps=a.cost_bps, freq=a.freq)
