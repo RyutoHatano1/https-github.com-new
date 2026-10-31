@@ -21,6 +21,7 @@ python -m soxl_factors.bottom_screen               # 2010 年〜: 底圏とそ�
 python -m soxl_factors.buy_patterns [--reset 40] [--unrate-max 0.4] [--extended]  # RSI<40（+失業率）をきっかけにした購入パターンの平均購入単価比較
 python -m soxl_factors.rsi_compare                 # RSI の種類（対象・計算法・期間）の比較と組み合わせルールの検証
 python -m soxl_factors.exit_rules                  # 売り方の比較（RSI 水準・保有期間・トレーリングストップ・移動平均割れ・利益確定）
+python -m soxl_factors.rsi_swing_vs_hold           # RSI40 で買い RSI75 で売る（複利） vs 持ち続け
 ```
 
 出力（`output/actual/` または `output/extended/`）: `report.md`, `ic_table.csv`, `backtest.csv`,
