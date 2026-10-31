@@ -18,6 +18,7 @@ python -m soxl_factors.panic                       # パニック局面（VIX≥
 python -m soxl_factors.scatter [--extended]          # 恐怖指数・失業率・RSI・移動平均と SOXL の日次散布図（--extended で 1996 年〜合成 SOXL）
 python -m soxl_factors.vxn_rsi                     # 2010 年〜: VXN × RSI と前後 3 か月の底圏（scatter --extended の後に実行）
 python -m soxl_factors.bottom_screen               # 2010 年〜: 底圏とそれ以外を分ける指標の総当たりと RSI<40 への上乗せ
+python -m soxl_factors.buy_patterns                # RSI<40 をきっかけにした購入パターン（分割・ナンピン等）の平均購入単価比較
 ```
 
 出力（`output/actual/` または `output/extended/`）: `report.md`, `ic_table.csv`, `backtest.csv`,
