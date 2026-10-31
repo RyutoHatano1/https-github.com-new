@@ -132,15 +132,18 @@ def rules() -> dict[str, Rule]:
     return R
 
 
-def episodes(price: pd.Series, rsi: pd.Series, W: int, enter: float = 40, reset: float = 50) -> list[Episode]:
+def episodes(price: pd.Series, rsi: pd.Series, W: int, enter: float = 40, reset: float = 50,
+             allowed: pd.Series | None = None) -> list[Episode]:
+    """allowed が与えられたら、その日が True のときだけ局面を開始する（例: 失業率が上がっていない）。"""
     p, r, idx = price.to_numpy(), rsi.to_numpy(), price.index
+    ok = np.ones(len(p), bool) if allowed is None else allowed.reindex(price.index).fillna(False).to_numpy(bool)
     eps, armed = [], True
     for i in range(len(p)):
         if np.isnan(r[i]):
             continue
         if r[i] >= reset:
             armed = True
-        elif armed and r[i] < enter:
+        elif armed and r[i] < enter and ok[i]:
             armed = False
             if i + W + 1 < len(p):
                 eps.append(Episode(idx[i], p[i:i + W + 2], r[i:i + W + 2]))
@@ -162,15 +165,22 @@ def evaluate(eps: list[Episode], R: dict[str, Rule], W: int) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def summarize(E: pd.DataFrame) -> pd.DataFrame:
+ERAS = {"2010-17": ("2010-01-01", "2017-12-31"), "2018-": ("2018-01-01", "2100-01-01")}
+
+
+def summarize(E: pd.DataFrame, eras: dict | None = None) -> pd.DataFrame:
     def agg(g):
         lr = np.log(g.cost_vs_lump)
         return pd.Series(dict(局面数=len(g), 単価比_幾何平均=np.exp(lr.mean()), 単価比_中央値=g.cost_vs_lump.median(),
                               一括より安く買えた割合=(g.cost_vs_lump < 0.999).mean(), 最悪=g.cost_vs_lump.max(),
                               最良=g.cost_vs_lump.min(), 期間内最安値比_中央値=g.cost_vs_low.median()))
     out = {}
-    for era, m in {"2010-17": E.start < SPLIT, "2018-": E.start >= SPLIT, "全期間": E.start.notna()}.items():
-        out[era] = E[m].groupby("rule").apply(agg)
+    eras = eras or ERAS
+    masks = {k: (E.start >= a) & (E.start <= b) for k, (a, b) in eras.items()}
+    masks["全期間"] = E.start.notna()
+    for era, m in masks.items():
+        if m.any():
+            out[era] = E[m].groupby("rule").apply(agg)
     T = pd.concat(out, axis=1)
     T.columns = [f"{b}_{a}" for a, b in T.columns]
     return T
@@ -182,18 +192,33 @@ def main():
     ap.add_argument("--out", type=Path, default=Path("output/buy_patterns"))
     ap.add_argument("--window", type=int, default=63)
     ap.add_argument("--reset", type=float, default=50, help="RSI がこの値以上に戻ったら次の局面を数える（40 なら下抜けごとに 1 局面）")
+    ap.add_argument("--unrate-max", type=float, default=None, help="失業率 − 過去12か月最低 がこの値未満の日だけ局面を開始")
+    ap.add_argument("--extended", action="store_true", help="1996 年から（2010-03 以前は合成 SOXL）")
     a = ap.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
     px, ohlcv = load(a.cache)
-    soxl = ohlcv["SOXL"]["Close"].dropna()
+    if a.extended:
+        from .scale_in import build_prices
+        soxl = build_prices(px)["soxl"]
+        soxl = soxl.loc["1996":]
+        eras = {"1996-2009(合成)": ("1996-01-01", "2010-03-10"), **ERAS}
+    else:
+        soxl = ohlcv["SOXL"]["Close"].dropna()
+        eras = ERAS
     rsi = features._rsi(px["SOX"].dropna(), 14).reindex(soxl.index)
+    allowed = None
+    if a.unrate_max is not None:
+        from . import cycle
+        fred = cycle.load_fred_extra(a.cache / "fred_monthly")
+        u = fred["UNRATE"]
+        allowed = cycle._on_calendar(u - u.rolling(12).min(), cycle.FRED_EXTRA["UNRATE"], soxl.index) < a.unrate_max
     R = rules()
     res = {}
     for W in sorted({a.window, 126}):
-        eps = episodes(soxl, rsi, W, reset=a.reset)
+        eps = episodes(soxl, rsi, W, reset=a.reset, allowed=allowed)
         E = evaluate(eps, R, W)
         E.to_csv(a.out / f"episodes_W{W}.csv", index=False)
-        T = summarize(E)
+        T = summarize(E, eras)
         T.to_csv(a.out / f"summary_W{W}.csv")
         res[W] = (eps, E, T)
 
@@ -205,8 +230,11 @@ def main():
     cols = [key_a, key_b, key_all, "一括より安く買えた割合_全期間", "最悪_全期間", "期間内最安値比_中央値_全期間", "順位_2010-17", "順位_2018-"]
     rank_corr = T[key_a].corr(T[key_b], method="spearman")
     best_a = T.sort_values(key_a).head(10)
-    L = ["# RSI(14)<40 をきっかけにした購入パターンの比較（2010〜、実 SOXL）\n",
-         f"- 局面数 {len(eps)}（2010-17: {sum(e.start < SPLIT for e in eps)}、2018-: {sum(e.start >= SPLIT for e in eps)}）、ルール数 {len(T)}",
+    cond = "RSI(14)<40" + (f" かつ 失業率上昇<{a.unrate_max}" if a.unrate_max is not None else "")
+    span = "1996〜（2010-03 以前は合成 SOXL）" if a.extended else "2010〜、実 SOXL"
+    counts = "、".join(f"{k}: {sum(pd.Timestamp(v[0]) <= e.start <= pd.Timestamp(v[1]) for e in eps)}" for k, v in eras.items())
+    L = [f"# {cond} をきっかけにした購入パターンの比較（{span}）\n",
+         f"- 局面数 {len(eps)}（{counts}）、ルール数 {len(T)}、局面の区切り: RSI {a.reset:g} 以上に戻ったら",
          f"- 期限 {W} 営業日で全額を投入。単価比 = 平均購入単価 ÷ 一括（翌日）の価格。1 未満なら一括より安い",
          f"- 2010-17 と 2018- のルール順位の相関: {rank_corr:.2f}\n",
          "## 2010-17 で単価が低かった上位 10 ルール（2018- は検証）\n", md_table(best_a[cols], index=True), "",
