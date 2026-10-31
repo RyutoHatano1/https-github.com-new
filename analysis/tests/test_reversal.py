@@ -50,3 +50,17 @@ def test_monthly_release_lag():
     cal = pd.bdate_range("2024-01-01", "2024-04-30")
     d = cycle._on_calendar(s, 50, cal)
     assert np.isnan(d.loc["2024-02-19"]) and d.loc["2024-02-20"] == 1.0 and d.loc["2024-03-22"] == 2.0
+
+
+def test_scale_in_price_ladder():
+    from soxl_factors import scale_in
+
+    idx = pd.bdate_range("2024-01-01", periods=7)
+    px_ = [100, 90, 75, 55, 70, 98, 98.0]
+    P = pd.DataFrame({"sox": px_, "soxl": px_, "onex": px_, "rf": 0.0,
+                      "dd": [0, -0.1, -0.25, -0.45, -0.3, -0.02, -0.02]}, index=idx)
+    plan = scale_in.Plan("t", "soxl", levels=(-0.20, -0.40))
+    daily, E = scale_in.simulate(P, plan, idx[0])
+    # -25% の翌日（55）に半分、-45% の翌日（70）に残り半分、回復の翌日（98）に全て売却
+    assert np.isclose(daily.value.iloc[-1], 0.5 * 98 / 55 + 0.5 * 98 / 70)
+    assert len(E) == 1 and np.isclose(E.deployed.iloc[0], 1.0) and daily.exposure.iloc[-1] == 0

@@ -13,6 +13,7 @@ python -m soxl_factors --out output --extended     # 上場前を ^SOX から合
 python -m pytest -q tests                          # 合成データで先読み・既知信号の回収を検証
 python -m soxl_factors.reversal --target SOXL      # 底・天井シグナル（連続下落・RSI・IBS 等）の検証。--target SOX で 1995 年〜
 python -m soxl_factors.cycle                       # 中期の底・天井（景気・半導体サイクル・金利/信用・センチメント指標）
+python -m soxl_factors.scale_in                    # 下落時の分割買い（価格分割・時間分割、SOXL と 1 倍の比較）
 ```
 
 出力（`output/actual/` または `output/extended/`）: `report.md`, `ic_table.csv`, `backtest.csv`,
