@@ -181,6 +181,7 @@ def main():
     ap.add_argument("--cache", type=Path, default=Path("data_cache"))
     ap.add_argument("--out", type=Path, default=Path("output/buy_patterns"))
     ap.add_argument("--window", type=int, default=63)
+    ap.add_argument("--reset", type=float, default=50, help="RSI がこの値以上に戻ったら次の局面を数える（40 なら下抜けごとに 1 局面）")
     a = ap.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
     px, ohlcv = load(a.cache)
@@ -189,7 +190,7 @@ def main():
     R = rules()
     res = {}
     for W in sorted({a.window, 126}):
-        eps = episodes(soxl, rsi, W)
+        eps = episodes(soxl, rsi, W, reset=a.reset)
         E = evaluate(eps, R, W)
         E.to_csv(a.out / f"episodes_W{W}.csv", index=False)
         T = summarize(E)
