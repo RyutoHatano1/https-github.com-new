@@ -44,6 +44,25 @@ def grids(d: pd.DataFrame) -> dict[str, pd.DataFrame]:
     }
 
 
+def sweep(d: pd.DataFrame, sw: pd.DataFrame, rsi_thr=(35, 40, 45, 50), vxn_thr=(0, 20, 22, 25, 28, 30)) -> pd.DataFrame:
+    """RSI(14) < r かつ VXN >= v の閾値を緩めていったときの成績（v=0 は VXN 条件なし）。"""
+    rows = []
+    for r in rsi_thr:
+        for v in vxn_thr:
+            m = (d.rsi14 < r) & (d.vxn >= v)
+            g = d[m]
+            row = dict(RSI未満=r, VXN以上=v if v else "条件なし", 日数=len(g), 月数=g.index.to_period("M").nunique(),
+                       底圏の割合=g.bottom_zone.mean(), 捉えた最安値の日=int(sw.index.isin(g.index).sum()),
+                       六か月後中央値=g.fwd_6m.median(), 一年後プラス=(g.fwd_1y.dropna() > 1).mean(), 一年後最悪=g.fwd_1y.min(),
+                       その後の下げ中央値=g.further_dd.median())
+            for era, (a, b) in {"2010-17": ("2010", "2017-12-31"), "2018-": ("2018", "2100")}.items():
+                gg = g.loc[a:b]
+                row[f"底圏の割合_{era}"] = gg.bottom_zone.mean()
+                row[f"一年後プラス_{era}"] = (gg.fwd_1y.dropna() > 1).mean()
+            rows.append(row)
+    return pd.DataFrame(rows)
+
+
 def figure(D: pd.DataFrame, pz: pd.DataFrame, months: pd.DataFrame, path: Path):
     d = D.dropna(subset=["vxn", "rsi14", "bottom_zone"])
     fig, axes = plt.subplots(1, 2, figsize=(17, 7.5), gridspec_kw={"width_ratios": [1.35, 1]})
@@ -111,7 +130,10 @@ def main():
         rows.append(dict(条件=name, 日数=len(g), 月数=g.index.to_period("M").nunique(), 底圏の割合=g.bottom_zone.mean(),
                          六か月後中央値=g.fwd_6m.median(), 一年後プラス=(g.fwd_1y.dropna() > 1).mean(),
                          一年後最悪=g.fwd_1y.min(), 捉えた最安値の日=f"{sw.index.isin(g.index).sum()}/{len(sw)}"))
-    L += ["## 条件別\n", md_table(pd.DataFrame(rows)), "", "![vxn_rsi](fig_vxn_rsi_2010.png)"]
+    L += ["## 条件別\n", md_table(pd.DataFrame(rows)), ""]
+    S = sweep(d, sw)
+    S.to_csv(a.out / "vxn_rsi_sweep.csv", index=False)
+    L += ["## 閾値を緩めた場合（RSI < r かつ VXN >= v）\n", md_table(S), "", "![vxn_rsi](fig_vxn_rsi_2010.png)"]
     a.out.mkdir(parents=True, exist_ok=True)
     (a.out / "vxn_rsi_2010.md").write_text("\n".join(L), encoding="utf-8")
     figure(D, G["底圏だった割合"], G["該当した月数"], a.out / "fig_vxn_rsi_2010.png")
