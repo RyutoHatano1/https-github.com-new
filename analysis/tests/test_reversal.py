@@ -64,3 +64,17 @@ def test_scale_in_price_ladder():
     # -25% の翌日（55）に半分、-45% の翌日（70）に残り半分、回復の翌日（98）に全て売却
     assert np.isclose(daily.value.iloc[-1], 0.5 * 98 / 55 + 0.5 * 98 / 70)
     assert len(E) == 1 and np.isclose(E.deployed.iloc[0], 1.0) and daily.exposure.iloc[-1] == 0
+
+
+def test_panic_episodes_grouping():
+    from soxl_factors import panic
+
+    n = 400
+    idx = pd.bdate_range("2020-01-01", periods=n)
+    P = pd.DataFrame({"soxl": np.linspace(1, 2, n), "onex": np.linspace(1, 1.5, n), "dd": -0.4}, index=idx)
+    vix = pd.Series(20.0, index=idx)
+    vix.iloc[[10, 12, 15]] = 35   # 1 つ目の局面（間隔 21 日以内）
+    vix.iloc[[60]] = 35           # 2 つ目の局面
+    E = panic.episodes(P, vix)
+    assert list(E.start) == [idx[10], idx[60]] and E.panic_days.tolist() == [3, 1]
+    assert E.success.all()
