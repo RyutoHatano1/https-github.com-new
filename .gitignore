@@ -6,5 +6,5 @@ __pycache__/
 .vscode/
 node_modules/
 analysis/output/
-analysis/data_cache/
+analysis/data_cache*/
 .pytest_cache/
