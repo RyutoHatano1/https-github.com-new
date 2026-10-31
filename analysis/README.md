@@ -22,6 +22,7 @@ python -m soxl_factors.buy_patterns [--reset 40] [--unrate-max 0.4] [--extended]
 python -m soxl_factors.rsi_compare                 # RSI の種類（対象・計算法・期間）の比較と組み合わせルールの検証
 python -m soxl_factors.exit_rules                  # 売り方の比較（RSI 水準・保有期間・トレーリングストップ・移動平均割れ・利益確定）
 python -m soxl_factors.rsi_swing_vs_hold           # RSI40 で買い RSI75 で売る（複利） vs 持ち続け
+python -m soxl_factors.exit_compare                # 売り方 RSI75 / +50% / 早い方 の比較（複利・税引後）
 ```
 
 出力（`output/actual/` または `output/extended/`）: `report.md`, `ic_table.csv`, `backtest.csv`,
