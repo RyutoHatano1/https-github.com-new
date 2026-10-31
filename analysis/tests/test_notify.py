@@ -58,9 +58,11 @@ def test_signals_and_message():
     assert info["sell_signal"] == (info["holding"] and info["rsi"] >= notify.SELL)
     msg = notify.build_message(info, ["テスト警告"], daily=True)
     assert msg and "SOX RSI14" in msg and "⚠ テスト警告" in msg and len(msg) < 5000
-    # 日報なし設定でイベントが無ければ送らない
-    quiet = dict(info, buy_signal=False, sell_signal=False, cross_below=False, cross_above=False)
+    # 日報なし設定では、売買が必要な日以外（RSI の通過だけの日を含む）は送らない
+    quiet = dict(info, buy_signal=False, sell_signal=False, cross_below=True, cross_above=False)
     assert notify.build_message(quiet, [], daily=False) is None
+    buy = dict(info, buy_signal=True, sell_signal=False, holding=False, entry=None)
+    assert notify.build_message(buy, [], daily=False).startswith("🟢")
 
 
 def test_forced_buy_message_has_stats():

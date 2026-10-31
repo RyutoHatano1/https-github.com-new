@@ -5,7 +5,7 @@
 
 実行: cd analysis && python -m soxl_factors.notify [--dry-run]
 環境変数: LINE_CHANNEL_ACCESS_TOKEN, LINE_USER_ID（無ければ送信せず標準出力に表示）
-          NOTIFY_DAILY=true/false（シグナルが無い日も短い日報を送るか。既定 true）
+          NOTIFY_DAILY=true/false（売買が必要な日以外も日報を送るか。既定 false＝買い・売りの日と異常時だけ）
 終了コード: 0 = 正常（または休場日でスキップ）、1 = データ異常・送信失敗（GitHub Actions を失敗にして気づけるように）
 """
 from __future__ import annotations
@@ -206,7 +206,8 @@ def _stat_line(s: dict, h: str) -> str:
 
 def build_message(info: dict, warnings: list[str], daily: bool) -> str | None:
     d = info["date"]
-    event = info["buy_signal"] or info["sell_signal"] or info["cross_below"] or info["cross_above"]
+    # 日報なしの設定では、ルール上の売買が必要な日（買い・売り）だけ送る
+    event = info["buy_signal"] or info["sell_signal"]
     if not event and not daily:
         return None
     L = []
@@ -300,7 +301,7 @@ def main(argv=None) -> int:
     ap.add_argument("--dry-run", action="store_true", help="LINE に送らず表示のみ")
     a = ap.parse_args(argv)
     token, to = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN"), os.environ.get("LINE_USER_ID")
-    daily = os.environ.get("NOTIFY_DAILY", "true").lower() != "false"
+    daily = os.environ.get("NOTIFY_DAILY", "false").lower() == "true"
     dry = a.dry_run or not (token and to)
 
     def deliver(text: str):
