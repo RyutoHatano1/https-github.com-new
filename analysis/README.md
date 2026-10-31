@@ -12,6 +12,7 @@ python -m soxl_factors --out output                # 実 SOXL の期間（2010�
 python -m soxl_factors --out output --extended     # 上場前を ^SOX から合成した 3 倍系列で延長（ドットコム崩壊・2008 年を含む）
 python -m pytest -q tests                          # 合成データで先読み・既知信号の回収を検証
 python -m soxl_factors.reversal --target SOXL      # 底・天井シグナル（連続下落・RSI・IBS 等）の検証。--target SOX で 1995 年〜
+python -m soxl_factors.cycle                       # 中期の底・天井（景気・半導体サイクル・金利/信用・センチメント指標）
 ```
 
 出力（`output/actual/` または `output/extended/`）: `report.md`, `ic_table.csv`, `backtest.csv`,

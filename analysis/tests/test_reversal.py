@@ -28,3 +28,25 @@ def test_simulate_enters_next_open_and_exits_next_open():
     assert np.isclose(r.iloc[3], 12.5 / 11.5 - 1)        # 保有中は引け→引け
     assert np.isclose(r.iloc[4], 13 / 12.5 - 1)          # 2 日保有後、翌寄付きで手仕舞い
     assert r.iloc[5] == 0 and len(tr) == 1 and np.isclose(tr.ret.iloc[0], 13 / 11 - 1)
+
+
+def test_zigzag_and_zones():
+    from soxl_factors import cycle
+
+    c = pd.Series([100, 120, 140, 100, 90, 95, 130, 150, 110.0], index=pd.bdate_range("2020-01-01", periods=9))
+    piv = cycle.zigzag(c, 0.25)
+    # 系列の最初の点は、そこから 25% 上昇した時点で谷として確定する
+    assert list(piv.kind) == ["trough", "peak", "trough", "peak"]
+    assert piv.price.tolist() == [100, 140, 90, 150]
+    z = cycle.zones(c, piv, band=0.10)
+    assert z.bottom_zone.iloc[4] == 1 and z.bottom_zone.iloc[5] == 1 and z.bottom_zone.iloc[3] == 0
+    assert np.isnan(z.bottom_zone.iloc[8])  # 最後のピボット以降は未確定
+
+
+def test_monthly_release_lag():
+    from soxl_factors import cycle
+
+    s = pd.Series([1.0, 2.0], index=pd.to_datetime(["2024-01-01", "2024-02-01"]))
+    cal = pd.bdate_range("2024-01-01", "2024-04-30")
+    d = cycle._on_calendar(s, 50, cal)
+    assert np.isnan(d.loc["2024-02-19"]) and d.loc["2024-02-20"] == 1.0 and d.loc["2024-03-22"] == 2.0
