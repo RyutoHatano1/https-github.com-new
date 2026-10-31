@@ -15,7 +15,7 @@ python -m soxl_factors.reversal --target SOXL      # 底・天井シグナル（
 python -m soxl_factors.cycle                       # 中期の底・天井（景気・半導体サイクル・金利/信用・センチメント指標）
 python -m soxl_factors.scale_in                    # 下落時の分割買い（価格分割・時間分割、SOXL と 1 倍の比較）
 python -m soxl_factors.panic                       # パニック局面（VIX≥30 python -m soxl_factors.scale_in                    # 下落時の分割買い（価格分割・時間分割、SOXL と 1 倍の比較） SOX −30%）で反発した局面と崩れた局面の違い
-python -m soxl_factors.scatter                     # 恐怖指数・失業率と SOXL（価格・1 年後倍率）の日次散布図
+python -m soxl_factors.scatter [--extended]          # 恐怖指数・失業率・RSI・移動平均と SOXL の日次散布図（--extended で 1996 年〜合成 SOXL）
 ```
 
 出力（`output/actual/` または `output/extended/`）: `report.md`, `ic_table.csv`, `backtest.csv`,
