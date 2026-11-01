@@ -299,6 +299,7 @@ def _summary(text: str):
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true", help="LINE に送らず表示のみ")
+    ap.add_argument("--test", action="store_true", help="合図が無くても現在の状況をテスト送信する（設定確認用）")
     a = ap.parse_args(argv)
     token, to = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN"), os.environ.get("LINE_USER_ID")
     daily = os.environ.get("NOTIFY_DAILY", "false").lower() == "true"
@@ -338,7 +339,9 @@ def main(argv=None) -> int:
     if not (0 <= info["rsi"] <= 100):
         deliver(f"⚠ SOXL通知: RSI の計算値が異常（{info['rsi']}）")
         return 1
-    text = build_message(info, warnings, daily)
+    text = build_message(info, warnings, daily or a.test)
+    if a.test and text:
+        text = "🧪 テスト送信（LINE の設定確認用）\n" + text
     if text:
         try:
             deliver(text)
