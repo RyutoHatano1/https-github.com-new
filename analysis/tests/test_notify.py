@@ -104,3 +104,13 @@ def test_send_line_failure_raises(monkeypatch):
     monkeypatch.setattr(notify.requests, "post", lambda *a, **k: Resp())
     with pytest.raises(RuntimeError):
         notify.send_line("x", "T", "U")
+
+
+def test_test_flag_forces_message(monkeypatch, capsys):
+    px = market()
+    monkeypatch.setattr(notify, "fetch_market", lambda: px)
+    monkeypatch.setattr(notify, "fetch_unrate", unrate)
+    monkeypatch.setattr(notify, "datetime", type("D", (), {"now": staticmethod(lambda tz=None: after_close(px.index[-1]))}))
+    monkeypatch.delenv("LINE_CHANNEL_ACCESS_TOKEN", raising=False)
+    assert notify.main(["--test"]) == 0
+    assert "🧪 テスト送信" in capsys.readouterr().out

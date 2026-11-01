@@ -10,6 +10,10 @@ on:
         description: "LINE に送らず結果だけ表示する"
         type: boolean
         default: false
+      test_send:
+        description: "合図が無くても現在の状況をテスト送信する（設定確認用）"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -41,4 +45,4 @@ jobs:
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
           LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
           NOTIFY_DAILY: ${{ vars.NOTIFY_DAILY || 'false' }}
-        run: python -m soxl_factors.notify ${{ inputs.dry_run && '--dry-run' || '' }}
+        run: python -m soxl_factors.notify ${{ inputs.dry_run && '--dry-run' || '' }} ${{ inputs.test_send && '--test' || '' }}
